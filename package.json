@@ -1,0 +1,50 @@
+{
+  "name": "pi-netrunner",
+  "version": "0.1.0",
+  "description": "Theme-aware netrunner flavor for the pi coding agent: Night City loader lines, glitch effects, spinners, NetWatch trace, a glitch logo banner and an optional neon theme",
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "pi-theme",
+    "netrunner",
+    "cyberpunk",
+    "spinner"
+  ],
+  "author": "Miguel Ángel García <mgarcia.inf@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mgar/pi-netrunner.git"
+  },
+  "homepage": "https://github.com/mgar/pi-netrunner#readme",
+  "bugs": "https://github.com/mgar/pi-netrunner/issues",
+  "type": "module",
+  "files": [
+    "extensions",
+    "themes",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "check": "tsc -p ."
+  },
+  "pi": {
+    "extensions": [
+      "./extensions/netrunner.ts"
+    ],
+    "themes": [
+      "./themes/netrunner.json"
+    ],
+    "video": "https://raw.githubusercontent.com/mgar/pi-netrunner/main/docs/demo.mp4",
+    "image": "https://raw.githubusercontent.com/mgar/pi-netrunner/main/docs/preview.png"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "^0.87.1",
+    "@types/node": "^22.20.4",
+    "typescript": "^7.0.2"
+  }
+}
