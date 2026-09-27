@@ -92,17 +92,24 @@ const PALETTES: Record<Palette, string> = {
 const PALETTE_NAMES = Object.keys(PALETTES) as Palette[];
 const isPalette = (v: unknown): v is Palette => typeof v === "string" && Object.hasOwn(PALETTES, v);
 const NEON: Partial<Record<Role, Rgb>> = {
-	cyan: [82, 190, 220], // #52bedc
+	cyan: [55, 235, 243], // #37ebf3
 	warning: [252, 238, 10], // #fcee0a
 	error: [255, 0, 60], // #ff003c
 	syntaxKeyword: [255, 0, 60],
 };
 let palette: Palette = "theme";
 
-/** Nearest xterm 256-color cube index, for terminals without truecolor. */
-function to256([r, g, b]: Rgb): number {
-	const level = (v: number) => (v < 48 ? 0 : v < 115 ? 1 : Math.floor((v - 35) / 40));
-	return 16 + 36 * level(r) + 6 * level(g) + level(b);
+/**
+ * Nearest xterm 256-color cube index, for terminals without truecolor. Rounds each channel
+ * the way pi rounds theme colors, so neon and the netrunner theme match in 256-color mode.
+ * (pi's grayscale fallback only applies to near-neutral colors, which neon doesn't use.)
+ */
+function to256(rgb: Rgb): number {
+	const LEVELS = [0, 95, 135, 175, 215, 255];
+	const nearest = (v: number) =>
+		LEVELS.reduce((best, level, i) => (Math.abs(v - level) < Math.abs(v - LEVELS[best]!) ? i : best), 0);
+	const [r, g, b] = rgb.map(nearest) as Rgb;
+	return 16 + 36 * r + 6 * g + b;
 }
 
 function fg(theme: Theme, role: Role, text: string): string {

@@ -79,7 +79,7 @@ You can also edit that file by hand and run `/reload`. Unknown values fall back 
 There are two color modes, set with `/netrunner colors`:
 
 - **`theme`** (default) uses your active pi theme, so it matches any palette.
-- **`neon`** uses the colors from the game's logo, yellow `#fcee0a` and cyan `#52bedc`, plus red `#ff003c` for alerts. Only the netrunner elements change; the rest of pi keeps your theme. Use this when your theme's yellow and cyan are too muted for the logo.
+- **`neon`** uses the game's colors: yellow `#fcee0a` from the logo, neon cyan `#37ebf3`, and red `#ff003c` for alerts. Only the netrunner elements change; the rest of pi keeps your theme. Use this when your theme's yellow and cyan are too muted for the logo.
 
 In `theme` mode, the scheme is still built on yellow and cyan like the game's logo, in your theme's own shades:
 
@@ -110,8 +110,8 @@ The theme is designed for a near-black terminal. On a gray or colored background
 |------------|-----------|
 | Background | `#0b0c0f` |
 | Foreground | `#e5e5e5` |
-| Cursor     | `#52bedc` |
-| Selection  | `#1f3a44` |
+| Cursor     | `#37ebf3` |
+| Selection  | `#1a3d3f` |
 
 For example, add `background = #0b0c0f` to your Ghostty config, or in iTerm2 open **Settings → Profiles → Colors** and set **Background**. Terminal settings apply to everything you run in that profile, not only pi.
 

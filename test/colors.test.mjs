@@ -77,7 +77,7 @@ test("neon colors ignore the theme and use the logo's yellow and cyan", async ()
 	await pi.command("colors neon");
 	const logo = colors(pi.banner().slice(2, 8).join(""));
 	assert.ok(logo.has(rgbCode("#fcee0a")));
-	assert.ok(logo.has(rgbCode("#52bedc")));
+	assert.ok(logo.has(rgbCode("#37ebf3")));
 	assert.ok(!logo.has(rgbCode(YELLOW)));
 
 	await pi.command("colors theme");
@@ -94,12 +94,12 @@ test("uses 256-color codes in terminals without truecolor", async () => {
 	await pi.command("colors neon");
 	const neon = colors(pi.banner().join(""));
 	assert.ok(neon.has("38;5;226"), "neon yellow");
-	assert.ok(neon.has("38;5;74"), "neon cyan");
+	assert.ok(neon.has("38;5;81"), "neon cyan");
 });
 
 test("the bundled netrunner theme looks exactly like neon mode", async () => {
-	const render = async (colorsMode) => {
-		const pi = start({ theme: makeTheme() }); // themes/netrunner.json
+	const render = async (colorsMode, mode) => {
+		const pi = start({ theme: makeTheme({}, mode) }); // themes/netrunner.json
 		await pi.emit("session_start");
 		await pi.command(`colors ${colorsMode}`);
 		await pi.startRun();
@@ -109,5 +109,7 @@ test("the bundled netrunner theme looks exactly like neon mode", async () => {
 		await pi.settle("error");
 		return { ...frame, outcome: pi.state.status };
 	};
-	assert.deepEqual(await render("theme"), await render("neon"));
+	for (const mode of ["truecolor", "256color"]) {
+		assert.deepEqual(await render("theme", mode), await render("neon", mode), mode);
+	}
 });
