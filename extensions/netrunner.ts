@@ -226,7 +226,7 @@ export const PHRASES = [
 	// Rides
 	"Tuning the Quadra Turbo-R...",
 	"Hot-wiring an Arch Nazaré...",
-	"Flooring it in Johnny's Porsche...",
+	"Flooring it in Johnny's ride...",
 	"Fixing the Mackinaw's suspension...",
 	"Hitching a ride on an AV...",
 	// Media and culture

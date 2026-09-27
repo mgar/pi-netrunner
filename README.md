@@ -2,6 +2,8 @@
 
 Netrunner flavor for the [pi coding agent](https://pi.dev). While pi works, the plain "Working..." loader turns into a Night City terminal. It takes its colors from your pi theme, so it fits whatever palette you use.
 
+> This is an unofficial fan work and is not approved/endorsed by CD PROJEKT RED. See [Disclaimer](#disclaimer).
+
 ![pi-netrunner: glitch banner, tool-aware loader and NetWatch trace](https://raw.githubusercontent.com/mgar/pi-netrunner/main/docs/demo.gif)
 
 ## What it changes
@@ -137,7 +139,7 @@ To try local changes in pi, run `pi -e .` from the repository.
 
 ## Disclaimer
 
-This is an unofficial fan project, not affiliated with or endorsed by CD PROJEKT RED. Cyberpunk and Cyberpunk 2077 are trademarks of CD PROJEKT S.A.
+This is an unofficial fan work and is not approved/endorsed by CD PROJEKT RED. It is free and non-commercial, and was made with the [CD PROJEKT RED Fan Content Guidelines](https://www.cdprojektred.com/en/fan-content) in mind. Cyberpunk and Cyberpunk 2077 are trademarks of CD PROJEKT S.A. The characters, places and other names referenced in the loader phrases belong to their respective owners.
 
 ## License
 

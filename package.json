@@ -1,6 +1,6 @@
 {
   "name": "pi-netrunner",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Theme-aware netrunner flavor for the pi coding agent: Night City loader lines, glitch effects, spinners, NetWatch trace, a glitch logo banner and an optional neon theme",
   "keywords": [
     "pi-package",
