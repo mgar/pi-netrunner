@@ -38,13 +38,18 @@ export function useTempAgentDir() {
 	return { dir, config: path.join(dir, "netrunner.json") };
 }
 
-/** Load the extension against a fake pi runtime. `state` holds whatever it last drew. */
-export function start({ theme = makeTheme(), mode = "tui", hasUI = true } = {}) {
+/**
+ * Load the extension against a fake pi runtime. `state` holds whatever it last drew:
+ * `state.status` is the run outcome, `state.humanity` the humanity meter.
+ * `contextPercent` is what pi reports as context usage (null = unknown).
+ */
+export function start({ theme = makeTheme(), mode = "tui", hasUI = true, contextPercent = 12 } = {}) {
 	const handlers = {};
 	const commands = {};
 	const answers = [];
 	const state = { notifications: [], menus: [] };
 	let idle = true;
+	let context = contextPercent;
 
 	extension({
 		on: (event, handler) => (handlers[event] = handler),
@@ -57,13 +62,17 @@ export function start({ theme = makeTheme(), mode = "tui", hasUI = true } = {}) 
 		hasUI,
 		cwd: "/tmp/project",
 		isIdle: () => idle,
+		getContextUsage: () => ({ tokens: context === null ? null : context * 1000, contextWindow: 100_000, percent: context }),
 		ui: {
 			theme,
 			setWorkingMessage: (message) => (state.message = message),
 			setWorkingIndicator: (options) => (state.indicator = options),
 			setHiddenThinkingLabel: (label) => (state.label = label),
 			setHeader: (factory) => (state.header = factory?.(undefined, theme)),
-			setStatus: (_key, text) => (state.status = text),
+			setStatus: (key, text) => {
+				if (key === "netrunner") state.status = text;
+				else if (key === "netrunner-humanity") state.humanity = text;
+			},
 			notify: (message, level) => state.notifications.push({ level, message }),
 			select: async (title, options) => {
 				state.menus.push({ title, options });
@@ -81,6 +90,8 @@ export function start({ theme = makeTheme(), mode = "tui", hasUI = true } = {}) 
 		complete: (prefix) => commands.netrunner.getArgumentCompletions(prefix).map((item) => item.value),
 		/** Queue answers for upcoming menus; each receives the options and returns the one to pick. */
 		answer: (...pickers) => answers.push(...pickers),
+		/** Change what pi reports as context usage. */
+		setContext: (percent) => (context = percent),
 		banner: (width = 120) => state.header?.render(width) ?? [],
 		async startRun() {
 			idle = false;

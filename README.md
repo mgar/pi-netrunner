@@ -6,12 +6,14 @@ Netrunner flavor for the [pi coding agent](https://pi.dev). While pi works, the 
 
 ## What it changes
 
-- **Loader lines:** about 50 netrunner-themed phrases, swapped every 2.5 seconds and never repeated back to back.
+- **Loader lines:** 115 netrunner-themed phrases, swapped every 2.5 seconds. Each one is shown once before any repeats.
 - **Tool-aware lines:** while a tool runs, the line says what it's doing: `Uploading quickhack: git status`, `Scanning shard: README.md`, `Rewriting ICE: app.ts`, `Pinging the subnet for "TODO"`, `Jacking into example.com`.
 - **Decrypt reveal:** each new line starts as scrambled characters and resolves left to right.
 - **Glitch flashes:** every few seconds the line flickers into a corrupted version in your theme's error color.
 - **Spinner:** seven netrunner styles to choose from (see [Spinners](#spinners)). The default is a flickering random braille cell.
 - **NetWatch trace:** after 10 seconds a `TRACE` meter appears and climbs to 100% over two minutes, blinks `TRACE COMPLETE`, then restarts.
+- **ICE detected:** when a tool fails, the loader flashes `!! ICE DETECTED !!` in red for a moment and the trace jumps 15% closer.
+- **Humanity meter:** the footer shows how much of the model's context window is left as `HUMANITY 88%`, turning yellow at half and red under 25%, where it warns `cyberpsychosis risk: /compact`. Turn it off with `/netrunner humanity off`.
 - **Run outcome:** when pi finishes, the footer shows `◆ Breach successful`, `◆ Jacked out` (aborted) or `◆ Flatlined` (error), with the run time, for six seconds.
 - **Startup banner:** a NETRUNNER logo in yellow block letters with a cyan shadow, glitch streaks and red fading edges, after the game's logo, framed by signal noise and a torn scanline. It replaces pi's default header, which includes its keybinding hints. Terminals narrower than 80 columns get a compact version.
 - **Hidden thinking blocks:** labelled "Netrunning...".
@@ -44,10 +46,12 @@ To use the matching theme, open `/settings`, choose **Theme**, and select `netru
 | `/netrunner spinner <name>` | Set a spinner style directly, e.g. `/netrunner spinner scanner` |
 | `/netrunner colors`         | Pick theme or neon colors                                       |
 | `/netrunner colors <name>`  | Set colors directly: `theme` or `neon`                          |
-| `/netrunner off`            | Restore pi's default loader, spinner, header and thinking label |
+| `/netrunner humanity`       | Turn the humanity meter on or off                               |
+| `/netrunner humanity <on\|off>` | Set it directly                                            |
+| `/netrunner off`            | Restore pi's defaults and hide the footer meters                |
 | `/netrunner on`             | Turn it back on                                                 |
 
-The on/off toggle lasts for the current pi process. To turn the extension off permanently, disable it with `pi config` or run `pi remove npm:pi-netrunner`.
+`/netrunner on` and `/netrunner off` last for the current pi process. To turn the extension off permanently, disable it with `pi config` or run `pi remove npm:pi-netrunner`.
 
 Tool commands and paths are shown only in your local terminal. Terminal escape sequences and control characters are stripped before display.
 
@@ -63,16 +67,17 @@ Tool commands and paths are shown only in your local terminal. Terminal escape s
 | `flicker` | `▚▞`    | Diagonal flicker     |
 | `optic`   | `◐◓◑◒`  | Kiroshi optic        |
 
-Your spinner and color choices are saved to `~/.pi/agent/netrunner.json` (or the `netrunner.json` in your custom pi agent directory) and apply to every session:
+Your spinner, color and humanity meter choices are saved to `~/.pi/agent/netrunner.json` (or the `netrunner.json` in your custom pi agent directory) and apply to every session:
 
 ```json
 {
   "spinner": "scanner",
-  "colors": "neon"
+  "colors": "neon",
+  "humanity": false
 }
 ```
 
-You can also edit that file by hand and run `/reload`. Unknown values fall back to the defaults: `noise` and `theme`.
+You can also edit that file by hand and run `/reload`. Unknown values fall back to the defaults: `noise`, `theme` and the humanity meter on.
 
 ## Colors
 
@@ -88,10 +93,11 @@ In `theme` mode, the scheme is still built on yellow and cyan like the game's lo
 | Banner logo                                   | `warning` (yellow)                                           |
 | Banner shadow, subtitle, tagline, loader text | cyan (see below)                                             |
 | Decrypt scramble, trace label                 | `dim`                                                        |
-| Glitch flash, banner fades, scanline tear, status tag | `error`                                              |
+| Glitch flash, ICE alert, banner fades, scanline tear, status tag | `error`                                   |
 | Spinner                                       | cyan, `warning`, `error`, `syntaxKeyword` depending on style |
 | Trace percentage                              | `success`, then `warning`, then `error` as it climbs         |
 | Run outcome                                   | `success` / `warning` / `error`                              |
+| Humanity meter                                | `success`, then `warning`, then `error` as context fills     |
 | Thinking label                                | `thinkingText`                                               |
 
 Themes don't have a "cyan" color, so the extension checks `borderAccent`, `accent`, `thinkingLow`, `syntaxType`, `mdLink`, `mdCode`, `syntaxVariable` and `border`, and uses the one whose hue is closest to cyan. Grays are skipped. In pi's built-in dark theme, for example, that's `borderAccent` (`#00d7ff`).

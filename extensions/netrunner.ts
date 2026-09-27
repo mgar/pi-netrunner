@@ -11,7 +11,7 @@
  * The "neon" colors setting uses the game's yellow and cyan instead; the bundled
  * `netrunner` theme gives the full neon look across all of pi.
  *
- * Command: /netrunner [on | off | spinner [name] | colors [theme|neon]]
+ * Command: /netrunner [on | off | spinner [name] | colors [theme|neon] | humanity [on|off]]
  */
 
 import fs from "node:fs";
@@ -121,58 +121,130 @@ function fg(theme: Theme, role: Role, text: string): string {
 	return theme.fg(role === "cyan" ? cyanRole(theme) : role, text);
 }
 
-const PHRASES = [
-	"Wake up, Samurai...",
+export const PHRASES = [
+	// Netrunning
 	"Jacking in...",
 	"Breaching protocol...",
-	"Scanning with Kiroshi optics...",
 	"Uploading quickhack...",
 	"Decrypting Arasaka ICE...",
 	"Pinging the local subnet...",
-	"Reading the shard...",
-	"Consulting Johnny Silverhand...",
-	"Asking Delamain for a route...",
-	"Waiting on a fixer callback...",
-	"Cutting a deal at the Afterlife...",
-	"Calibrating Sandevistan...",
-	"Cooling cyberdeck RAM...",
-	"Dodging NCPD scanners...",
-	"Running a braindance...",
-	"Getting Vik to check the chrome...",
-	"Tuning into 89.7 Growl FM...",
+	"Spinning up a ping daemon...",
+	"Slotting an ICEpick daemon...",
+	"Running Mass Vulnerability...",
+	"Datamining the access point...",
+	"Queuing a Contagion hack...",
+	"Rebooting their optics...",
+	"Short-circuiting enemy cyberware...",
+	"Overheating a Maelstrom ganger...",
+	"Spoofing the camera feed...",
+	"Routing through an old Net node...",
+	"Outrunning black ICE...",
+	"Dodging NetWatch...",
 	"Peeking past the Blackwall...",
+	"Looking for Bartmoss's backdoor...",
+	"Cooling cyberdeck RAM...",
+	// Cyberware and gear
+	"Scanning with Kiroshi optics...",
+	"Calibrating Sandevistan...",
+	"Triggering Kerenzikov...",
+	"Sharpening the Mantis Blades...",
+	"Tightening the monowire...",
+	"Charging the Gorilla Arms...",
+	"Syncing the Smart Link...",
+	"Recharging the optical camo...",
+	"Polishing the Malorian 3516...",
+	"Installing a new cyberdeck...",
+	"Getting Vik to check the chrome...",
+	"Keeping cyberpsychosis at bay...",
 	"Stabilizing the Relic...",
-	"Cooking up something preem, choom...",
-	"Nova. Almost there...",
+	"Backing up the engram...",
+	// People of Night City
+	"Wake up, Samurai...",
+	"Consulting Johnny Silverhand...",
 	"Riding shotgun with Jackie...",
 	"Getting a lift from Panam...",
-	"Waiting for Judy to finish the BD edit...",
+	"Waiting on Judy's BD edit...",
 	"Drawing a card from Misty's tarot...",
 	"Following Takemura's lead...",
 	"Syncing with Alt Cunningham...",
-	"Chatting with Brendan the vending machine...",
+	"Asking Delamain for a route...",
+	"Letting T-Bug handle the ICE...",
+	"Hearing out Dex's pitch...",
+	"Owing Rogue another favor...",
+	"Ordering the usual from Claire...",
+	"Jamming with Kerry Eurodyne...",
+	"Working a case with River...",
+	"Stopping by Mama Welles' for dinner...",
+	"Sitting through a Padre sermon...",
+	"Haggling with Wakako...",
+	"Talking shop with Dakota...",
 	"Taking a gig from Regina...",
 	"Getting Mr. Hands on the line...",
+	"Checking in with Solomon Reed...",
 	"Stalling Songbird...",
 	"Ignoring Mr. Blue Eyes...",
-	"Grabbing a Nicola on the corner...",
-	"Ordering a drink at Lizzie's Bar...",
+	"Hoping Adam Smasher is off shift...",
+	"Browsing Nix's cyberdecks...",
+	"Chatting with Brendan the vending machine...",
+	"Asking Rebecca to cover the flank...",
+	"Taking Lucy to the moon...",
+	"Waiting on a fixer callback...",
+	// Places
 	"Taking the NCART to Watson...",
-	"Crossing the Badlands...",
-	"Chasing a lead in Dogtown...",
-	"Taking the long way through Pacifica...",
-	"Sneaking past the Tyger Claws...",
-	"Overheating a Maelstrom ganger...",
-	"Spinning up a ping daemon...",
-	"Short-circuiting enemy cyberware...",
-	"Sharpening the Mantis Blades...",
-	"Polishing the Malorian 3516...",
-	"Swapping cyberdecks at the ripperdoc...",
-	"Backing up the engram...",
-	"Keeping cyberpsychosis at bay...",
-	"Wiring eddies to the fixer...",
-	"Checking the Night City Wire...",
+	"Bargain hunting in Kabuki Market...",
+	"Grabbing noodles in Japantown...",
+	"Picking up chrome in Little China...",
+	"Hanging out at Lizzie's Bar...",
+	"Cutting a deal at the Afterlife...",
+	"Laying low at Totentanz...",
+	"Refilling coffee at Tom's Diner...",
+	"Booking a table at Embers...",
+	"Riding the H10 elevator...",
+	"Crossing Corpo Plaza unnoticed...",
+	"Sneaking into Konpeki Plaza...",
 	"Scaling Arasaka Tower...",
+	"Taking the long way through Pacifica...",
+	"Watching the smog over Santo Domingo...",
+	"Chasing a lead in Dogtown...",
+	"Staking out the Black Sapphire...",
+	"Crossing the Badlands...",
+	"Checking into the Sunset Motel...",
+	// Gangs, corps and cops
+	"Sneaking past the Tyger Claws...",
+	"Nodding to the Valentinos in Heywood...",
+	"Negotiating with the Voodoo Boys...",
+	"Keeping the Mox on speed dial...",
+	"Avoiding the Scavs...",
+	"Racing the Wraiths...",
+	"Rolling with the Aldecaldos...",
+	"Dodging NCPD scanners...",
+	"Outrunning MaxTac...",
+	"Renewing the Trauma Team plan...",
+	"Staying off Militech's radar...",
+	"Signing nothing with Arasaka...",
+	"Avoiding Kurt Hansen's Barghest...",
+	// Rides
+	"Tuning the Quadra Turbo-R...",
+	"Hot-wiring an Arch Nazaré...",
+	"Flooring it in Johnny's Porsche...",
+	"Fixing the Mackinaw's suspension...",
+	"Hitching a ride on an AV...",
+	// Media and culture
+	"Tuning into 89.7 Growl FM...",
+	"Switching to 107.3 Morro Rock Radio...",
+	"Vibing to 92.9 Night FM...",
+	"Cranking up Chippin' In...",
+	"Running a braindance...",
+	"Reading the shard...",
+	"Watching N54 News...",
+	"Grabbing a Nicola on the corner...",
+	"Eating vending machine scop...",
+	// Street talk
+	"Cooking up something preem, choom...",
+	"Trying not to be a gonk...",
+	"Wiring eddies to the fixer...",
+	"Counting the eddies twice...",
+	"Nova. Almost there...",
 ];
 
 const TICK_MS = 50;
@@ -185,6 +257,9 @@ const TRACE_DELAY_MS = 10_000; // trace meter appears after this long
 const TRACE_FULL_MS = 120_000; // 0% -> 100%
 const TRACE_ALERT_MS = 3000; // "TRACE COMPLETE" blink, then the trace restarts
 const OUTCOME_MS = 6000;
+const ICE_MS = 1500; // "ICE DETECTED" alert after a failed tool
+const ICE_TRACE_BOOST_MS = 18_000; // each failure pushes the trace 15% closer
+const HUMANITY_WARN = 25; // below this, the humanity meter warns about cyberpsychosis
 const MAX_TOOL_DETAIL = 48;
 
 const SCRAMBLE = "01<>/\\|#%&$@ABCDEF";
@@ -353,23 +428,35 @@ interface Run {
 	nextRotate: number;
 	activeTools: number;
 	glitchUntil: number;
+	iceUntil: number;
+	traceBoost: number;
 	lastMessage: string;
 }
 
 export default function (pi: ExtensionAPI) {
 	let enabled = true;
 	let spinner: SpinnerName = DEFAULT_SPINNER;
+	let humanityOn = true;
 	let run: Run | undefined;
 	let ticker: ReturnType<typeof setInterval> | undefined;
 	let outcomeTimer: ReturnType<typeof setTimeout> | undefined;
 	let outcome: "completed" | "aborted" | "error" = "completed";
 	let lastPhrase = -1;
 
+	// Shuffle-bag: every phrase is shown once before any repeats.
+	let bag: number[] = [];
 	const randomPhrase = () => {
-		let i = Math.floor(Math.random() * PHRASES.length);
-		if (i === lastPhrase) i = (i + 1) % PHRASES.length;
-		lastPhrase = i;
-		return PHRASES[i]!;
+		if (bag.length === 0) {
+			bag = PHRASES.map((_, i) => i);
+			for (let i = bag.length - 1; i > 0; i--) {
+				const j = Math.floor(Math.random() * (i + 1));
+				[bag[i], bag[j]] = [bag[j]!, bag[i]!];
+			}
+			// Don't open the new round with the phrase that closed the last one.
+			if (bag.at(-1) === lastPhrase) [bag[0], bag[bag.length - 1]] = [bag[bag.length - 1]!, bag[0]!];
+		}
+		lastPhrase = bag.pop()!;
+		return PHRASES[lastPhrase]!;
 	};
 
 	const setLine = (r: Run, line: string, now = Date.now()) => {
@@ -379,6 +466,7 @@ export default function (pi: ExtensionAPI) {
 	};
 
 	const renderLine = (r: Run, theme: Theme, now: number): string => {
+		if (now < r.iceUntil) return `${fg(theme, ALERT, "!! ICE DETECTED !!")} ${fg(theme, ALERT, glitch(r.line))}`;
 		const elapsed = now - r.lineStart;
 		if (elapsed < REVEAL_MS) {
 			// Decrypt reveal: resolved prefix, scrambled tail.
@@ -395,7 +483,7 @@ export default function (pi: ExtensionAPI) {
 	};
 
 	const renderTrace = (r: Run, theme: Theme, now: number): string => {
-		const t = now - r.start - TRACE_DELAY_MS;
+		const t = now - r.start - TRACE_DELAY_MS + r.traceBoost;
 		if (t < 0) return "";
 		const phase = t % (TRACE_FULL_MS + TRACE_ALERT_MS);
 		if (phase >= TRACE_FULL_MS) {
@@ -447,6 +535,8 @@ export default function (pi: ExtensionAPI) {
 			nextRotate: now,
 			activeTools: 0,
 			glitchUntil: 0,
+			iceUntil: 0,
+			traceBoost: 0,
 			lastMessage: "",
 		};
 		setLine(run, randomPhrase(), now);
@@ -490,16 +580,34 @@ export default function (pi: ExtensionAPI) {
 		ctx.ui.setWorkingIndicator(SPINNERS[spinner].build(ctx.ui.theme));
 	};
 
+	/** Humanity meter: the context window left, as cyberware eats into your humanity. */
+	const updateHumanity = (ctx: ExtensionContext) => {
+		if (!active(ctx)) return;
+		if (!humanityOn) return ctx.ui.setStatus("netrunner-humanity", undefined);
+		const theme = ctx.ui.theme;
+		const percent = ctx.getContextUsage()?.percent;
+		if (percent === undefined || percent === null) {
+			ctx.ui.setStatus("netrunner-humanity", fg(theme, FAINT, "HUMANITY --"));
+			return;
+		}
+		const humanity = Math.max(0, Math.round(100 - percent));
+		const color: ThemeColor = humanity >= 50 ? "success" : humanity >= HUMANITY_WARN ? "warning" : "error";
+		const warning = humanity < HUMANITY_WARN ? fg(theme, "error", " cyberpsychosis risk: /compact") : "";
+		ctx.ui.setStatus("netrunner-humanity", `${fg(theme, FAINT, "HUMANITY")} ${fg(theme, color, `${humanity}%`)}${warning}`);
+	};
+
 	const applyStatic = (ctx: ExtensionContext) => {
 		if (enabled) {
 			applyIndicator(ctx);
 			ctx.ui.setHiddenThinkingLabel(fg(ctx.ui.theme, "thinkingText", "Netrunning..."));
 			setBanner(ctx);
+			updateHumanity(ctx);
 		} else {
 			ctx.ui.setWorkingIndicator();
 			ctx.ui.setHiddenThinkingLabel();
 			ctx.ui.setWorkingMessage();
 			ctx.ui.setHeader(undefined);
+			ctx.ui.setStatus("netrunner-humanity", undefined);
 			clearOutcome(ctx);
 		}
 	};
@@ -512,6 +620,7 @@ export default function (pi: ExtensionAPI) {
 		if (error) ctx.ui.notify(`netrunner: ignoring ${configPath()}: ${error}`, "warning");
 		spinner = isSpinner(data.spinner) ? data.spinner : DEFAULT_SPINNER;
 		palette = isPalette(data.colors) ? data.colors : "theme";
+		humanityOn = typeof data.humanity === "boolean" ? data.humanity : true;
 		applyStatic(ctx);
 	});
 
@@ -529,11 +638,18 @@ export default function (pi: ExtensionAPI) {
 		setLine(run, toolLine(event.toolName, event.args));
 	});
 
-	pi.on("tool_execution_end", async () => {
+	pi.on("tool_execution_end", async (event) => {
 		if (!run) return;
+		if (event.isError) {
+			run.iceUntil = Date.now() + ICE_MS;
+			run.traceBoost += ICE_TRACE_BOOST_MS;
+		}
 		run.activeTools = Math.max(0, run.activeTools - 1);
 		if (run.activeTools === 0) run.nextRotate = Math.min(run.nextRotate, Date.now() + TOOL_LINGER_MS);
 	});
+
+	pi.on("turn_end", async (_event, ctx) => updateHumanity(ctx));
+	pi.on("session_compact", async (_event, ctx) => updateHumanity(ctx));
 
 	pi.on("agent_before_settle", async (event) => {
 		outcome = event.outcome;
@@ -543,6 +659,7 @@ export default function (pi: ExtensionAPI) {
 		const started = run?.start;
 		stopRun();
 		if (started !== undefined && active(ctx)) showOutcome(ctx, Date.now() - started);
+		updateHumanity(ctx);
 	});
 
 	pi.on("session_shutdown", async () => {
@@ -587,6 +704,18 @@ export default function (pi: ExtensionAPI) {
 		if (name) setPalette(ctx, name);
 	};
 
+	const setHumanity = (ctx: ExtensionContext, on: boolean) => {
+		humanityOn = on;
+		updateHumanity(ctx);
+		save(ctx, { humanity: on }, `Humanity meter ${on ? "on" : "off"}`);
+	};
+
+	const pickHumanity = async (ctx: ExtensionContext) => {
+		const options = ["On", "Off"].map((o) => `${o}${(o === "On") === humanityOn ? "  (current)" : ""}`);
+		const choice = await ctx.ui.select("Netrunner humanity meter", options);
+		if (choice !== undefined) setHumanity(ctx, choice.startsWith("On"));
+	};
+
 	const pickSpinner = async (ctx: ExtensionContext) => {
 		const options = SPINNER_NAMES.map((name) => {
 			const s = SPINNERS[name];
@@ -600,23 +729,27 @@ export default function (pi: ExtensionAPI) {
 	const openMenu = async (ctx: ExtensionContext) => {
 		const spinnerItem = `Spinner: ${SPINNERS[spinner].label}`;
 		const colorsItem = `Colors: ${palette === "neon" ? "Neon" : "Theme"}`;
+		const humanityItem = `Humanity meter: ${humanityOn ? "On" : "Off"}`;
 		const toggleItem = enabled ? "Turn off (this session)" : "Turn on";
-		const choice = await ctx.ui.select("Netrunner", [spinnerItem, colorsItem, toggleItem]);
+		const choice = await ctx.ui.select("Netrunner", [spinnerItem, colorsItem, humanityItem, toggleItem]);
 		if (choice === spinnerItem) await pickSpinner(ctx);
 		else if (choice === colorsItem) await pickPalette(ctx);
+		else if (choice === humanityItem) await pickHumanity(ctx);
 		else if (choice === toggleItem) setEnabled(ctx, !enabled);
 	};
 
-	const usage = `/netrunner [on | off | spinner [${SPINNER_NAMES.join("|")}] | colors [${PALETTE_NAMES.join("|")}]]`;
+	const usage = `/netrunner [on | off | spinner [${SPINNER_NAMES.join("|")}] | colors [${PALETTE_NAMES.join("|")}] | humanity [on|off]]`;
 
 	pi.registerCommand("netrunner", {
-		description: "Netrunner settings: opens a menu, or use on | off | spinner [name] | colors [theme|neon]",
+		description: "Netrunner settings: opens a menu, or use on | off | spinner [name] | colors [theme|neon] | humanity [on|off]",
 		getArgumentCompletions: (prefix) => {
 			const values = prefix.startsWith("spinner ")
 				? SPINNER_NAMES.map((n) => `spinner ${n}`)
 				: prefix.startsWith("colors ")
 					? PALETTE_NAMES.map((n) => `colors ${n}`)
-					: ["on", "off", "spinner", "colors"];
+					: prefix.startsWith("humanity ")
+						? ["humanity on", "humanity off"]
+						: ["on", "off", "spinner", "colors", "humanity"];
 			return values.filter((v) => v.startsWith(prefix)).map((v) => ({ value: v, label: v }));
 		},
 		handler: async (args, ctx) => {
@@ -630,9 +763,14 @@ export default function (pi: ExtensionAPI) {
 				if (isPalette(name)) return setPalette(ctx, name);
 				return ctx.ui.notify(`Unknown colors "${name}". Options: ${PALETTE_NAMES.join(", ")}`, "error");
 			}
+			if (cmd === "humanity" && name) {
+				if (name === "on" || name === "off") return setHumanity(ctx, name === "on");
+				return ctx.ui.notify(`Unknown humanity setting "${name}". Options: on, off`, "error");
+			}
 			if (!ctx.hasUI) return ctx.ui.notify(`Usage: ${usage}`, "info");
 			if (cmd === "spinner") return pickSpinner(ctx);
 			if (cmd === "colors") return pickPalette(ctx);
+			if (cmd === "humanity") return pickHumanity(ctx);
 			if (cmd === "") return openMenu(ctx);
 			ctx.ui.notify(`Usage: ${usage}`, "error");
 		},

@@ -31,7 +31,7 @@ test("saves choices made in the menu and restores them in the next session", asy
 		(options) => options.find((o) => o.includes("Scanner sweep")),
 	);
 	await pi.command("");
-	assert.deepEqual(pi.state.menus[0].options, ["Spinner: Data noise", "Colors: Theme", "Turn off (this session)"]);
+	assert.deepEqual(pi.state.menus[0].options, ["Spinner: Data noise", "Colors: Theme", "Humanity meter: On", "Turn off (this session)"]);
 	assert.deepEqual(readConfig(), { spinner: "scanner" });
 
 	pi.answer(
@@ -95,7 +95,40 @@ test("warns about a broken file and never overwrites it", async () => {
 
 test("completes subcommands and values", async () => {
 	const pi = await session();
-	assert.deepEqual(pi.complete(""), ["on", "off", "spinner", "colors"]);
+	assert.deepEqual(pi.complete(""), ["on", "off", "spinner", "colors", "humanity"]);
+	assert.deepEqual(pi.complete("humanity o"), ["humanity on", "humanity off"]);
 	assert.deepEqual(pi.complete("spinner s"), ["spinner scanner", "spinner shade"]);
 	assert.deepEqual(pi.complete("colors "), ["colors theme", "colors neon"]);
+});
+
+test("turns the humanity meter off and on, and remembers it", async () => {
+	const pi = await session();
+	assert.ok(pi.state.humanity, "on by default");
+
+	await pi.command("humanity off");
+	assert.equal(pi.state.humanity, undefined);
+	assert.deepEqual(readConfig(), { humanity: false });
+	assert.deepEqual(lastNotification(pi), { level: "info", message: "Humanity meter off." });
+	await pi.emit("turn_end");
+	assert.equal(pi.state.humanity, undefined, "stays hidden while off");
+
+	const next = await session();
+	assert.equal(next.state.humanity, undefined, "off in the next session too");
+	next.answer(
+		(options) => options.find((o) => o.startsWith("Humanity meter:")),
+		(options) => options.find((o) => o.startsWith("On")),
+	);
+	await next.command("");
+	assert.equal(next.state.menus[0].options[2], "Humanity meter: Off");
+	assert.ok(next.state.humanity, "back on from the menu");
+	assert.deepEqual(readConfig(), { humanity: true });
+});
+
+test("rejects unknown humanity settings and falls back to on", async () => {
+	fs.writeFileSync(config, JSON.stringify({ humanity: "maybe" }));
+	const pi = await session();
+	assert.ok(pi.state.humanity, "an unknown value means on");
+	await pi.command("humanity maybe");
+	assert.match(lastNotification(pi).message, /Unknown humanity setting "maybe"/);
+	assert.deepEqual(readConfig(), { humanity: "maybe" }, "file untouched");
 });
