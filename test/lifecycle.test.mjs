@@ -12,9 +12,9 @@ afterEach(() => {
 	mock.timers.reset();
 });
 
-async function session(options) {
+async function session(options, reason) {
 	const pi = start(options);
-	await pi.emit("session_start");
+	await pi.emit("session_start", { reason });
 	return pi;
 }
 
@@ -103,6 +103,63 @@ test("/netrunner off restores pi's defaults and stays quiet", async () => {
 
 	await pi.command("on");
 	assert.ok(pi.state.indicator && pi.state.header, "back on");
+});
+
+test("plays the boot sequence on a fresh start, then settles on the banner", async () => {
+	const settled = (await session()).banner().map(strip);
+	const pi = await session({}, "startup");
+	const lines = () => pi.banner().map(strip);
+
+	assert.deepEqual(lines().slice(1, 10), Array(9).fill(""), "logo starts blank");
+	assert.equal(lines().length, settled.length, "same height throughout, so nothing jumps");
+
+	mock.timers.tick(100);
+	let frame = lines();
+	assert.ok(frame[1].includes("&"), "top row is decrypting");
+	assert.equal(frame[9], "", "bottom row has not started");
+
+	mock.timers.tick(220); // 320ms
+	frame = lines();
+	assert.equal(frame[1], settled[1], "top rows resolve first");
+	assert.notEqual(frame[9], settled[9], "bottom row is still decrypting");
+	for (const line of frame) assert.ok([...line].length <= 80, "never wider than the banner");
+
+	mock.timers.tick(280); // 600ms: logo done, tagline typing
+	frame = lines();
+	assert.deepEqual(frame.slice(0, 11), settled.slice(0, 11));
+	assert.equal(frame[11], settled[11].slice(0, frame[11].length), "tagline types out");
+	assert.ok(frame[11].length > 0 && frame[11].length < settled[11].length);
+
+	mock.timers.tick(200); // 800ms: flickering
+	assert.doesNotMatch(lines()[11], /LINK UNSTABLE/, "status tag flickers off");
+	mock.timers.tick(100);
+	assert.match(lines()[11], /LINK UNSTABLE/, "and back on");
+
+	mock.timers.tick(200);
+	assert.deepEqual(lines(), settled, "settles on the static banner");
+	assert.ok(pi.state.renders > 0, "redraws while animating");
+	mock.timers.tick(5000); // flush the last frame (mock timers fire one chained timeout per tick)
+	const renders = pi.state.renders;
+	for (let i = 0; i < 5; i++) mock.timers.tick(1000);
+	assert.equal(pi.state.renders, renders, "stops redrawing once settled");
+});
+
+test("skips the boot sequence on reloads, resumes and new sessions", async () => {
+	for (const reason of ["reload", "resume", "new", "fork"]) {
+		const pi = await session({}, reason);
+		assert.match(strip(pi.banner().join("\n")), /LINK UNSTABLE/, reason);
+		mock.timers.tick(2000);
+		assert.equal(pi.state.renders, undefined, `${reason}: no animation`);
+	}
+});
+
+test("stops the boot sequence when pi disposes the header", async () => {
+	const pi = await session({}, "startup");
+	mock.timers.tick(200);
+	pi.state.header.dispose();
+	const renders = pi.state.renders;
+	for (let i = 0; i < 5; i++) mock.timers.tick(400);
+	assert.equal(pi.state.renders, renders);
 });
 
 test("shrinks the banner on narrow terminals", async () => {

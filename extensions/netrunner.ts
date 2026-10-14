@@ -566,14 +566,33 @@ export default function (pi: ExtensionAPI) {
 		outcomeTimer.unref?.();
 	};
 
-	const setBanner = (ctx: ExtensionContext) => {
-		ctx.ui.setHeader((_tui, theme) => ({
-			render(width: number): string[] {
-				const hint = fg(theme, FAINT, "/netrunner off restores pi's default header");
-				return ["", ...renderLogo(theme, width), "", renderTagline(theme, width), hint, ""];
-			},
-			invalidate() {},
-		}));
+	/** The startup banner; `boot` plays the boot sequence once before it settles. */
+	const setBanner = (ctx: ExtensionContext, boot = false) => {
+		ctx.ui.setHeader((tui, theme) => {
+			const bootStart = Date.now();
+			const elapsed = () => (boot ? Date.now() - bootStart : BOOT_MS);
+			// Redraw until the sequence ends; the last frame draws the settled banner.
+			let timer: ReturnType<typeof setTimeout> | undefined;
+			const nextFrame = () => {
+				timer = setTimeout(() => {
+					tui.requestRender();
+					if (elapsed() < BOOT_MS) nextFrame();
+				}, BOOT_FRAME_MS);
+				timer.unref?.();
+			};
+			if (boot) nextFrame();
+			return {
+				render(width: number): string[] {
+					const t = elapsed();
+					const hint = fg(theme, FAINT, "/netrunner off restores pi's default header");
+					return ["", ...bootLogo(renderLogo(theme, width), t), "", renderTagline(theme, width, t), hint, ""];
+				},
+				invalidate() {},
+				dispose() {
+					clearTimeout(timer);
+				},
+			};
+		});
 	};
 
 	const applyIndicator = (ctx: ExtensionContext) => {
@@ -596,11 +615,11 @@ export default function (pi: ExtensionAPI) {
 		ctx.ui.setStatus("netrunner-humanity", `${fg(theme, FAINT, "HUMANITY")} ${fg(theme, color, `${humanity}%`)}${warning}`);
 	};
 
-	const applyStatic = (ctx: ExtensionContext) => {
+	const applyStatic = (ctx: ExtensionContext, boot = false) => {
 		if (enabled) {
 			applyIndicator(ctx);
 			ctx.ui.setHiddenThinkingLabel(fg(ctx.ui.theme, "thinkingText", "Netrunning..."));
-			setBanner(ctx);
+			setBanner(ctx, boot);
 			updateHumanity(ctx);
 		} else {
 			ctx.ui.setWorkingIndicator();
@@ -614,14 +633,14 @@ export default function (pi: ExtensionAPI) {
 
 	const active = (ctx: ExtensionContext) => enabled && ctx.mode === "tui";
 
-	pi.on("session_start", async (_event, ctx) => {
+	pi.on("session_start", async (event, ctx) => {
 		if (ctx.mode !== "tui") return;
 		const { data, error } = readConfig();
 		if (error) ctx.ui.notify(`netrunner: ignoring ${configPath()}: ${error}`, "warning");
 		spinner = isSpinner(data.spinner) ? data.spinner : DEFAULT_SPINNER;
 		palette = isPalette(data.colors) ? data.colors : "theme";
 		humanityOn = typeof data.humanity === "boolean" ? data.humanity : true;
-		applyStatic(ctx);
+		applyStatic(ctx, event.reason === "startup"); // reloads and resumes skip the boot sequence
 	});
 
 	pi.on("agent_start", async (_event, ctx) => {
@@ -832,13 +851,67 @@ function tornScanline(theme: Theme): string {
 
 const STATUS_TAG = "[◈ LINK UNSTABLE ◈]";
 
-function renderTagline(theme: Theme, width: number): string {
+function renderTagline(theme: Theme, width: number, elapsed = BOOT_MS): string {
 	const text = "▌ NET ACCESS POINT";
 	const version = `pi v${VERSION}`;
 	const tagline = `${fg(theme, PRIMARY, text)}  ${fg(theme, FAINT, version)}`;
+	const typed = (elapsed - LOGO_MS) / TYPE_MS;
+	if (typed < 1) {
+		const shown = Math.floor(Math.max(0, typed) * visibleWidth(tagline));
+		return mapVisible(tagline, (c, x) => (x < shown ? c : null));
+	}
 	const gap = BIG_WIDTH - text.length - 2 - version.length - STATUS_TAG.length;
 	if (width < BIG_WIDTH || gap < 2) return tagline;
+	// The status tag flickers on twice before it settles.
+	const flicker = elapsed - LOGO_MS - TYPE_MS;
+	if (flicker < FLICKER_MS && Math.floor(flicker / (FLICKER_MS / 4)) % 2 === 1) return tagline;
 	return `${tagline}${" ".repeat(gap)}${fg(theme, ALERT, STATUS_TAG)}`;
+}
+
+// --- Boot sequence --------------------------------------------------------
+// On a fresh start the logo decrypts row by row, the tagline types out and the
+// status tag flickers, about a second in all. Reloads and resumes skip it.
+
+const LOGO_MS = 500; // last logo row resolved
+const ROW_REVEAL_MS = 250; // each row decrypts left to right over this long
+const TYPE_MS = 200; // tagline typing
+const FLICKER_MS = 300; // status tag: on, off, on, off, then settled
+const BOOT_MS = LOGO_MS + TYPE_MS + FLICKER_MS;
+const BOOT_FRAME_MS = 40;
+
+const SGR = /\x1b\[[0-9;]*m/y;
+const visibleWidth = (line: string) => [...line.replace(/\x1b\[[0-9;]*m/g, "")].length;
+
+/** Rewrite each visible character of a colored line, keeping its color codes; null drops the character. */
+function mapVisible(line: string, map: (c: string, x: number) => string | null): string {
+	let out = "";
+	let x = 0;
+	for (let i = 0; i < line.length; ) {
+		SGR.lastIndex = i;
+		const code = SGR.exec(line);
+		if (code) {
+			out += code[0];
+			i += code[0].length;
+			continue;
+		}
+		const c = String.fromCodePoint(line.codePointAt(i)!);
+		out += map(c, x++) ?? "";
+		i += c.length;
+	}
+	return out;
+}
+
+/** Logo rows at `elapsed` ms into the boot: blank, then decrypting left to right, top row first. */
+function bootLogo(lines: string[], elapsed: number): string[] {
+	if (elapsed >= LOGO_MS) return lines;
+	const stagger = lines.length > 1 ? (LOGO_MS - ROW_REVEAL_MS) / (lines.length - 1) : 0;
+	return lines.map((line, row) => {
+		const progress = (elapsed - row * stagger) / ROW_REVEAL_MS;
+		if (progress <= 0) return "";
+		if (progress >= 1) return line;
+		const done = Math.floor(progress * visibleWidth(line));
+		return mapVisible(line, (c, x) => (x < done || c === " " ? c : pick(SCRAMBLE)));
+	});
 }
 
 function renderLogo(theme: Theme, width: number): string[] {

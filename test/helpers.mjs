@@ -48,6 +48,7 @@ export function start({ theme = makeTheme(), mode = "tui", hasUI = true, context
 	const commands = {};
 	const answers = [];
 	const state = { notifications: [], menus: [] };
+	const tui = { requestRender: () => (state.renders = (state.renders ?? 0) + 1) };
 	let idle = true;
 	let context = contextPercent;
 
@@ -68,7 +69,7 @@ export function start({ theme = makeTheme(), mode = "tui", hasUI = true, context
 			setWorkingMessage: (message) => (state.message = message),
 			setWorkingIndicator: (options) => (state.indicator = options),
 			setHiddenThinkingLabel: (label) => (state.label = label),
-			setHeader: (factory) => (state.header = factory?.(undefined, theme)),
+			setHeader: (factory) => (state.header = factory?.(tui, theme)),
 			setStatus: (key, text) => {
 				if (key === "netrunner") state.status = text;
 				else if (key === "netrunner-humanity") state.humanity = text;
