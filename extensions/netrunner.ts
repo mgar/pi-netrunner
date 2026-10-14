@@ -584,8 +584,7 @@ export default function (pi: ExtensionAPI) {
 			return {
 				render(width: number): string[] {
 					const t = elapsed();
-					const hint = fg(theme, FAINT, "/netrunner off restores pi's default header");
-					return ["", ...bootLogo(renderLogo(theme, width), t), "", renderTagline(theme, width, t), hint, ""];
+					return ["", ...bootLogo(renderLogo(theme, width), t), "", renderTagline(theme, width, t), ""];
 				},
 				invalidate() {},
 				dispose() {

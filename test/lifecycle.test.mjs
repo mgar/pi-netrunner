@@ -165,8 +165,8 @@ test("stops the boot sequence when pi disposes the header", async () => {
 test("shrinks the banner on narrow terminals", async () => {
 	const pi = await session();
 	const full = pi.banner(120);
-	assert.equal(full.length, 14, "static band, logo, subtitle, scanline, tagline and hint");
-	assert.match(strip(full.at(-3)), /\[◈ LINK UNSTABLE ◈\]$/);
+	assert.equal(full.length, 13, "static band, logo, subtitle, scanline and tagline");
+	assert.match(strip(full.at(-2)), /\[◈ LINK UNSTABLE ◈\]$/);
 	for (const line of full) assert.ok([...strip(line)].length <= 80, "full banner is 80 columns");
 	assert.doesNotMatch(strip(pi.banner(60).join("\n")), /LINK UNSTABLE|0x4E4554/, "no frame on narrow terminals");
 	assert.deepEqual(pi.banner(60).slice(1, 4).map(strip), [
@@ -176,7 +176,7 @@ test("shrinks the banner on narrow terminals", async () => {
 	]);
 	assert.equal(strip(pi.banner(20)[1]), "NETRUNNER");
 	for (const width of [20, 60, 120]) {
-		const logo = pi.banner(width).slice(1, -4); // tagline and hint may wrap; the logo must not
+		const logo = pi.banner(width).slice(1, -3); // the tagline may wrap; the logo must not
 		for (const line of logo) assert.ok([...strip(line)].length <= width, `logo fits in ${width} columns`);
 	}
 });
