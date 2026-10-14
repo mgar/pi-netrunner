@@ -35,7 +35,7 @@ Or try it for one session without installing:
 pi -e npm:pi-netrunner
 ```
 
-Tested with pi 0.87.1.
+Tested with pi 1.2.0.
 
 To use the matching theme, open `/settings`, choose **Theme**, and select `netrunner`. See [The `netrunner` theme](#the-netrunner-theme) for the recommended terminal colors.
 
