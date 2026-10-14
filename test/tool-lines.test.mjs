@@ -34,6 +34,33 @@ test("describes what each tool is doing", async () => {
 	assert.equal(strip(await lineFor("mystery_tool", {})), "Running daemon: mystery_tool");
 });
 
+test("describes code mode, background tasks and MCP tools", async () => {
+	assert.equal(strip(await lineFor("codemode", { code: "return 1" })), "Compiling a custom quickhack...");
+	assert.equal(strip(await lineFor("bg_run", { name: "Unit tests", command: "npm test" })), "Deploying a background daemon: Unit tests");
+	assert.equal(strip(await lineFor("bg_run", { command: "npm test" })), "Deploying a background daemon: npm test");
+	assert.equal(strip(await lineFor("bg_delegate", { name: "Audit auth" })), "Hiring a netrunner crew: Audit auth");
+	assert.equal(strip(await lineFor("mcp__scout__keyword_search", {})), "Breaching the scout subnet: keyword_search");
+	assert.equal(
+		strip(await lineFor("mcp__ada_mcp_gateway__jira_search", {})),
+		"Breaching the ada_mcp_gateway subnet: jira_search",
+	);
+});
+
+test("opens runs started by an extension with a call from the fixer", async () => {
+	const pi = start();
+	await pi.emit("session_start");
+	const firstLine = async (messageType) => {
+		await pi.emit("before_agent_start", { messageType });
+		await pi.startRun();
+		mock.timers.tick(500);
+		const line = strip(pi.state.message);
+		await pi.settle();
+		return line;
+	};
+	assert.equal(await firstLine("custom"), "Incoming call from your fixer...");
+	assert.notEqual(await firstLine("user"), "Incoming call from your fixer...", "your own prompts don't");
+});
+
 test("falls back to a plain label when the tool gives nothing to show", async () => {
 	assert.equal(strip(await lineFor("edit", undefined)), "Rewriting ICE...");
 	assert.equal(strip(await lineFor("grep", {})), "Pinging the subnet...");

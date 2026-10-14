@@ -9,14 +9,18 @@ Netrunner flavor for the [pi coding agent](https://pi.dev). While pi works, the 
 ## What it changes
 
 - **Loader lines:** 115 netrunner-themed phrases, swapped every 2.5 seconds. Each one is shown once before any repeats.
-- **Tool-aware lines:** while a tool runs, the line says what it's doing: `Uploading quickhack: git status`, `Scanning shard: README.md`, `Rewriting ICE: app.ts`, `Pinging the subnet for "TODO"`, `Jacking into example.com`.
+- **Tool-aware lines:** while a tool runs, the line says what it's doing: `Uploading quickhack: git status`, `Scanning shard: README.md`, `Rewriting ICE: app.ts`, `Pinging the subnet for "TODO"`, `Jacking into example.com`. Code mode, background tasks and MCP tools get their own: `Compiling a custom quickhack...`, `Deploying a background daemon: Unit tests`, `Hiring a netrunner crew: Audit auth`, `Breaching the scout subnet: keyword_search`.
+- **Fixer calls:** when another extension starts a run, such as a finished background task waking pi up, the loader opens with `Incoming call from your fixer...`.
 - **Decrypt reveal:** each new line starts as scrambled characters and resolves left to right.
 - **Glitch flashes:** every few seconds the line flickers into a corrupted version in your theme's error color.
 - **Spinner:** seven netrunner styles to choose from (see [Spinners](#spinners)). The default is a flickering random braille cell.
 - **NetWatch trace:** after 10 seconds a `TRACE` meter appears and climbs to 100% over two minutes, blinks `TRACE COMPLETE`, then restarts.
 - **ICE detected:** when a tool fails, the loader flashes `!! ICE DETECTED !!` in red for a moment and the trace jumps 15% closer.
+- **Signal masked:** while a dialog waits on you, such as a confirmation or a question, the loader shows `SIGNAL MASKED · awaiting your call` and the trace and run time stop, so stepping away doesn't count against you.
 - **Humanity meter:** the footer shows how much of the model's context window is left as `HUMANITY 88%`, turning yellow at half and red under 25%, where it warns `cyberpsychosis risk: /compact`. Turn it off with `/netrunner humanity off`.
+- **Ripperdoc:** compaction shows up in the footer as `◆ Ripperdoc pulled 142k tokens of chrome`, or as a red `◆ Relic malfunction` when the context overflowed. While it runs mid-task, the loader says `Ripperdoc pulling chrome...`.
 - **Run outcome:** when pi finishes, the footer shows `◆ Breach successful`, `◆ Jacked out` (aborted) or `◆ Flatlined` (error), with the run time, for six seconds.
+- **Engram swap:** switching models flashes `◆ Engram swap: Claude Opus 5.5` in the footer, and changing the thinking level swaps your Sandevistan, from `Mk.1` (minimal) to the `Militech Apogee` (max).
 - **Startup banner:** a NETRUNNER logo in yellow block letters with a cyan shadow, glitch streaks and red fading edges, after the game's logo, framed by signal noise and a torn scanline. On a fresh start it boots up in about a second: the logo decrypts row by row, the tagline types out and the status tag flickers on; reloads and resumes show it straight away. It replaces pi's default header, which includes its keybinding hints. Terminals narrower than 80 columns get a compact version.
 - **Hidden thinking blocks:** labelled "Netrunning...".
 - **`netrunner` theme:** an optional neon pi theme, for the full Night City look.

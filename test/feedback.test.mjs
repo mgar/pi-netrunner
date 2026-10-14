@@ -48,8 +48,66 @@ test("humanity meter updates after runs and compaction, and handles unknown usag
 	assert.equal(strip(pi.state.humanity), "HUMANITY 45%", "after a run");
 
 	pi.setContext(null); // pi doesn't know the usage right after compacting
-	await pi.emit("session_compact");
+	await pi.emit("session_compact", { reason: "manual", compactionEntry: { tokensBefore: 90_000 } });
 	assert.equal(strip(pi.state.humanity), "HUMANITY --");
+});
+
+test("the ripperdoc reports what compaction pulled", async () => {
+	const pi = await session();
+	await pi.emit("session_compact", { reason: "manual", compactionEntry: { tokensBefore: 142_400 } });
+	assert.equal(strip(pi.state.status), "◆ Ripperdoc pulled 142k tokens of chrome");
+	assert.ok(colors(pi.state.status).has(GREEN));
+
+	await pi.emit("session_compact", { reason: "overflow", compactionEntry: { tokensBefore: 199_000 } });
+	assert.equal(strip(pi.state.status), "◆ Relic malfunction: ripperdoc pulled 199k tokens of chrome");
+	assert.ok(colors(pi.state.status).has(RED));
+
+	await pi.emit("session_compact_failed", { reason: "threshold", aborted: false });
+	assert.equal(strip(pi.state.status), "◆ Ripperdoc botched the job: compaction failed");
+	mock.timers.tick(6000);
+	assert.equal(pi.state.status, undefined, "cleared after six seconds");
+
+	await pi.emit("session_compact_failed", { reason: "manual", aborted: true });
+	assert.equal(pi.state.status, undefined, "cancelling it yourself isn't a failure");
+});
+
+test("the loader shows the ripperdoc while compaction runs mid-run", async () => {
+	const pi = await session();
+	await pi.startRun();
+	await pi.emit("session_before_compact", { reason: "threshold" });
+	mock.timers.tick(10_000); // well past the 2.5s rotation
+	assert.match(strip(pi.state.message), /^Ripperdoc pulling chrome\.\.\./);
+	await pi.emit("session_compact", { reason: "threshold", compactionEntry: { tokensBefore: 150_000 } });
+	mock.timers.tick(1500);
+	assert.doesNotMatch(strip(pi.state.message), /Ripperdoc/, "back to rotating phrases");
+	await pi.settle();
+});
+
+test("flashes engram swaps and Sandevistan upgrades", async () => {
+	const pi = await session();
+	const opus = { id: "claude-opus-5.5", name: "Claude Opus 5.5" };
+	await pi.emit("model_select", { model: opus, source: "set" });
+	assert.equal(strip(pi.state.status), "◆ Engram swap: Claude Opus 5.5");
+	await pi.emit("model_select", { model: { id: "gpt-5" }, source: "cycle" });
+	assert.equal(strip(pi.state.status), "◆ Engram swap: gpt-5", "falls back to the model id");
+
+	for (const [level, text] of [
+		["high", "◆ Sandevistan Mk.4 engaged"],
+		["max", "◆ Militech Apogee Sandevistan engaged"],
+		["off", "◆ Sandevistan offline"],
+	]) {
+		await pi.emit("thinking_level_select", { level });
+		assert.equal(strip(pi.state.status), text);
+	}
+	mock.timers.tick(6000);
+
+	await pi.emit("model_select", { model: opus, source: "restore" });
+	assert.equal(pi.state.status, undefined, "resuming a session doesn't count as a swap");
+	await pi.command("off");
+	await pi.emit("model_select", { model: opus, source: "set" });
+	await pi.emit("thinking_level_select", { level: "high" });
+	await pi.emit("session_compact", { reason: "manual", compactionEntry: { tokensBefore: 1 } });
+	assert.equal(pi.state.status, undefined, "quiet when netrunner is off");
 });
 
 test("humanity meter disappears when netrunner is off", async () => {
@@ -102,5 +160,40 @@ test("each failure pushes the NetWatch trace forward", async () => {
 	await pi.emit("tool_execution_end", { isError: true });
 	mock.timers.tick(2000); // 9s in, plus 36s of boost: 35s into the trace
 	assert.match(strip(pi.state.message), /TRACE 29%$/);
+	await pi.settle();
+});
+
+test("a dialog masks the signal: the trace and the run time stop while it waits on you", async () => {
+	const pi = await session();
+	await pi.startRun();
+	mock.timers.tick(5000);
+	await pi.emit("ui_prompt_start", { kind: "confirm" });
+	mock.timers.tick(100);
+	assert.equal(strip(pi.state.message), "SIGNAL MASKED · awaiting your call");
+	assert.ok(colors(pi.state.message).has(YELLOW));
+
+	mock.timers.tick(60_000); // you went for coffee
+	assert.equal(strip(pi.state.message), "SIGNAL MASKED · awaiting your call", "no trace builds up");
+
+	await pi.emit("ui_prompt_end", { kind: "confirm" });
+	mock.timers.tick(6000); // 11s of actual run time: 1s into the trace
+	assert.match(strip(pi.state.message), /TRACE {2}0%$/);
+	await pi.settle();
+	assert.equal(strip(pi.state.status), "◆ Breach successful 11s", "the wait isn't counted");
+});
+
+test("nested dialogs keep the signal masked until the last one closes", async () => {
+	const pi = await session();
+	await pi.emit("ui_prompt_end"); // stray end while idle: ignored
+	await pi.startRun();
+	await pi.emit("ui_prompt_end"); // stray end mid-run: ignored
+	await pi.emit("ui_prompt_start", { kind: "select" });
+	await pi.emit("ui_prompt_start", { kind: "confirm" });
+	await pi.emit("ui_prompt_end", { kind: "confirm" });
+	mock.timers.tick(100);
+	assert.match(strip(pi.state.message), /^SIGNAL MASKED/, "one still open");
+	await pi.emit("ui_prompt_end", { kind: "select" });
+	mock.timers.tick(3000);
+	assert.doesNotMatch(strip(pi.state.message), /SIGNAL MASKED/);
 	await pi.settle();
 });

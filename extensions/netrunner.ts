@@ -247,6 +247,23 @@ export const PHRASES = [
 	"Nova. Almost there...",
 ];
 
+const FIXER_CALL = "Incoming call from your fixer...";
+const RIPPERDOC_LINE = "Ripperdoc pulling chrome...";
+const SIGNAL_MASKED = "SIGNAL MASKED · awaiting your call";
+
+/** Thinking levels as Sandevistan models, from the Mk.1 up to the Militech Apogee. */
+const SANDEVISTAN: Record<string, string> = {
+	off: "Sandevistan offline",
+	minimal: "Sandevistan Mk.1 engaged",
+	low: "Sandevistan Mk.2 engaged",
+	medium: "Sandevistan Mk.3 engaged",
+	high: "Sandevistan Mk.4 engaged",
+	xhigh: "Sandevistan Mk.5 engaged",
+	max: "Militech Apogee Sandevistan engaged",
+};
+
+const kTokens = (n: number) => (n >= 1000 ? `${Math.round(n / 1000)}k` : String(n));
+
 const TICK_MS = 50;
 const ROTATE_MS = 2500; // time each random line stays up
 const TOOL_LINGER_MS = 1000; // keep a finished tool's line this long before rotating
@@ -415,8 +432,18 @@ function toolLine(toolName: string, args: Record<string, unknown> | undefined): 
 			const target = sanitize(host || a.url);
 			return target ? `Jacking into ${target}` : "Jacking into the Net...";
 		}
-		default:
+		case "codemode":
+			return "Compiling a custom quickhack...";
+		case "bg_run":
+			return describe("Deploying a background daemon", sanitize(a.name || a.command));
+		case "bg_delegate":
+			return describe("Hiring a netrunner crew", sanitize(a.name));
+		default: {
+			// MCP tools are named mcp__<server>__<tool>.
+			const mcp = toolName.match(/^mcp__(.+?)__(.+)$/);
+			if (mcp) return describe(`Breaching the ${sanitize(mcp[1])} subnet`, sanitize(mcp[2]));
 			return describe("Running daemon", sanitize(toolName));
+		}
 	}
 }
 
@@ -431,7 +458,14 @@ interface Run {
 	iceUntil: number;
 	traceBoost: number;
 	lastMessage: string;
+	compacting: boolean;
+	promptDepth: number; // blocking dialogs open right now
+	maskedAt: number | undefined; // when the first of them opened
+	pausedMs: number; // time spent waiting on dialogs, left out of the trace and the run time
 }
+
+/** Time a run has spent waiting on you, including a dialog that is still open. */
+const pausedFor = (r: Run, now: number) => r.pausedMs + (r.maskedAt === undefined ? 0 : now - r.maskedAt);
 
 export default function (pi: ExtensionAPI) {
 	let enabled = true;
@@ -442,6 +476,7 @@ export default function (pi: ExtensionAPI) {
 	let outcomeTimer: ReturnType<typeof setTimeout> | undefined;
 	let outcome: "completed" | "aborted" | "error" = "completed";
 	let lastPhrase = -1;
+	let fixerCall = false; // the next run was started by an extension, such as a finished background task
 
 	// Shuffle-bag: every phrase is shown once before any repeats.
 	let bag: number[] = [];
@@ -466,6 +501,7 @@ export default function (pi: ExtensionAPI) {
 	};
 
 	const renderLine = (r: Run, theme: Theme, now: number): string => {
+		if (r.maskedAt !== undefined) return fg(theme, HIGHLIGHT, SIGNAL_MASKED);
 		if (now < r.iceUntil) return `${fg(theme, ALERT, "!! ICE DETECTED !!")} ${fg(theme, ALERT, glitch(r.line))}`;
 		const elapsed = now - r.lineStart;
 		if (elapsed < REVEAL_MS) {
@@ -483,7 +519,7 @@ export default function (pi: ExtensionAPI) {
 	};
 
 	const renderTrace = (r: Run, theme: Theme, now: number): string => {
-		const t = now - r.start - TRACE_DELAY_MS + r.traceBoost;
+		const t = now - r.start - pausedFor(r, now) - TRACE_DELAY_MS + r.traceBoost;
 		if (t < 0) return "";
 		const phase = t % (TRACE_FULL_MS + TRACE_ALERT_MS);
 		if (phase >= TRACE_FULL_MS) {
@@ -501,7 +537,9 @@ export default function (pi: ExtensionAPI) {
 		const now = Date.now();
 		const theme = r.ctx.ui.theme;
 
-		if (r.activeTools === 0 && now >= r.nextRotate) setLine(r, randomPhrase(), now);
+		if (r.activeTools === 0 && !r.compacting && r.maskedAt === undefined && now >= r.nextRotate) {
+			setLine(r, randomPhrase(), now);
+		}
 		const revealing = now - r.lineStart < REVEAL_MS;
 		if (!revealing && now >= r.glitchUntil && Math.random() < TICK_MS / GLITCH_EVERY_MS) {
 			r.glitchUntil = now + GLITCH_MS;
@@ -538,8 +576,13 @@ export default function (pi: ExtensionAPI) {
 			iceUntil: 0,
 			traceBoost: 0,
 			lastMessage: "",
+			compacting: false,
+			promptDepth: 0,
+			maskedAt: undefined,
+			pausedMs: 0,
 		};
-		setLine(run, randomPhrase(), now);
+		setLine(run, fixerCall ? FIXER_CALL : randomPhrase(), now);
+		fixerCall = false;
 		tick();
 		ticker = setInterval(tick, TICK_MS);
 		ticker.unref?.();
@@ -551,8 +594,16 @@ export default function (pi: ExtensionAPI) {
 		ctx.ui.setStatus("netrunner", undefined);
 	};
 
-	const showOutcome = (ctx: ExtensionContext, durationMs: number) => {
+	/** Show a short message in the footer for a few seconds, replacing the previous one. */
+	const flash = (ctx: ExtensionContext, color: Role, text: string, detail?: string) => {
 		const theme = ctx.ui.theme;
+		clearOutcome(ctx);
+		ctx.ui.setStatus("netrunner", fg(theme, color, `◆ ${text}`) + (detail ? ` ${fg(theme, FAINT, detail)}` : ""));
+		outcomeTimer = setTimeout(() => clearOutcome(ctx), OUTCOME_MS);
+		outcomeTimer.unref?.();
+	};
+
+	const showOutcome = (ctx: ExtensionContext, durationMs: number) => {
 		const secs = Math.max(1, Math.round(durationMs / 1000));
 		const [color, text]: [ThemeColor, string] =
 			outcome === "aborted"
@@ -560,10 +611,7 @@ export default function (pi: ExtensionAPI) {
 				: outcome === "error"
 					? ["error", "Flatlined"]
 					: ["success", "Breach successful"];
-		clearOutcome(ctx);
-		ctx.ui.setStatus("netrunner", `${fg(theme, color, `◆ ${text}`)} ${fg(theme, FAINT, `${secs}s`)}`);
-		outcomeTimer = setTimeout(() => clearOutcome(ctx), OUTCOME_MS);
-		outcomeTimer.unref?.();
+		flash(ctx, color, text, `${secs}s`);
 	};
 
 	/** The startup banner; `boot` plays the boot sequence once before it settles. */
@@ -642,6 +690,10 @@ export default function (pi: ExtensionAPI) {
 		applyStatic(ctx, event.reason === "startup"); // reloads and resumes skip the boot sequence
 	});
 
+	pi.on("before_agent_start", async (event) => {
+		fixerCall = event.messageType === "custom";
+	});
+
 	pi.on("agent_start", async (_event, ctx) => {
 		if (!active(ctx)) return;
 		clearOutcome(ctx);
@@ -667,17 +719,68 @@ export default function (pi: ExtensionAPI) {
 	});
 
 	pi.on("turn_end", async (_event, ctx) => updateHumanity(ctx));
-	pi.on("session_compact", async (_event, ctx) => updateHumanity(ctx));
+
+	// Ripperdoc: compaction pulls chrome (context) so you keep your humanity.
+	const endCompaction = () => {
+		if (!run) return;
+		run.compacting = false;
+		run.nextRotate = Math.min(run.nextRotate, Date.now() + TOOL_LINGER_MS);
+	};
+
+	pi.on("session_before_compact", async () => {
+		if (!run) return; // manual /compact runs while idle, with pi's own indicator
+		run.compacting = true;
+		setLine(run, RIPPERDOC_LINE);
+	});
+
+	pi.on("session_compact", async (event, ctx) => {
+		endCompaction();
+		updateHumanity(ctx);
+		if (!active(ctx)) return;
+		const chrome = `${kTokens(event.compactionEntry.tokensBefore)} tokens of chrome`;
+		if (event.reason === "overflow") flash(ctx, ALERT, `Relic malfunction: ripperdoc pulled ${chrome}`);
+		else flash(ctx, "success", `Ripperdoc pulled ${chrome}`);
+	});
+
+	pi.on("session_compact_failed", async (event, ctx) => {
+		endCompaction();
+		if (active(ctx) && !event.aborted) flash(ctx, ALERT, "Ripperdoc botched the job: compaction failed");
+	});
+
+	// Engram swap: a new model, or a different Sandevistan (thinking level).
+	pi.on("model_select", async (event, ctx) => {
+		if (!active(ctx) || event.source === "restore") return;
+		flash(ctx, PRIMARY, `Engram swap: ${sanitize(event.model.name || event.model.id)}`);
+	});
+
+	pi.on("thinking_level_select", async (event, ctx) => {
+		if (!active(ctx)) return;
+		flash(ctx, event.level === "off" ? FAINT : HIGHLIGHT, SANDEVISTAN[event.level] ?? `Sandevistan: ${sanitize(event.level)}`);
+	});
 
 	pi.on("agent_before_settle", async (event) => {
 		outcome = event.outcome;
 	});
 
 	pi.on("agent_settled", async (_event, ctx) => {
-		const started = run?.start;
+		const now = Date.now();
+		const duration = run ? now - run.start - pausedFor(run, now) : undefined;
 		stopRun();
-		if (started !== undefined && active(ctx)) showOutcome(ctx, Date.now() - started);
+		if (duration !== undefined && active(ctx)) showOutcome(ctx, duration);
 		updateHumanity(ctx);
+	});
+
+	// Signal masked: while a dialog waits on you, NetWatch loses the trail and the clock stops.
+	pi.on("ui_prompt_start", async () => {
+		if (run && run.promptDepth++ === 0) run.maskedAt = Date.now();
+	});
+
+	pi.on("ui_prompt_end", async () => {
+		if (!run || run.promptDepth === 0) return;
+		if (--run.promptDepth === 0 && run.maskedAt !== undefined) {
+			run.pausedMs += Date.now() - run.maskedAt;
+			run.maskedAt = undefined;
+		}
 	});
 
 	pi.on("session_shutdown", async () => {
