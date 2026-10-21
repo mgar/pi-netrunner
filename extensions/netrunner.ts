@@ -248,25 +248,10 @@ export const PHRASES = [
 ];
 
 const FIXER_CALL = "Incoming call from your fixer...";
-const RIPPERDOC_LINE = "Ripperdoc pulling chrome...";
 const SIGNAL_MASKED = "SIGNAL MASKED · awaiting your call";
-
-/** Thinking levels as Sandevistan models, from the Mk.1 up to the Militech Apogee. */
-const SANDEVISTAN: Record<string, string> = {
-	off: "Sandevistan offline",
-	minimal: "Sandevistan Mk.1 engaged",
-	low: "Sandevistan Mk.2 engaged",
-	medium: "Sandevistan Mk.3 engaged",
-	high: "Sandevistan Mk.4 engaged",
-	xhigh: "Sandevistan Mk.5 engaged",
-	max: "Militech Apogee Sandevistan engaged",
-};
-
-const kTokens = (n: number) => (n >= 1000 ? `${Math.round(n / 1000)}k` : String(n));
 
 const TICK_MS = 50;
 const ROTATE_MS = 2500; // time each random line stays up
-const TOOL_LINGER_MS = 1000; // keep a finished tool's line this long before rotating
 const REVEAL_MS = 400; // decrypt reveal duration for a new line
 const GLITCH_MS = 150;
 const GLITCH_EVERY_MS = 8000; // average gap between glitch flashes
@@ -458,7 +443,6 @@ interface Run {
 	iceUntil: number;
 	traceBoost: number;
 	lastMessage: string;
-	compacting: boolean;
 	promptDepth: number; // blocking dialogs open right now
 	maskedAt: number | undefined; // when the first of them opened
 	pausedMs: number; // time spent waiting on dialogs, left out of the trace and the run time
@@ -537,7 +521,7 @@ export default function (pi: ExtensionAPI) {
 		const now = Date.now();
 		const theme = r.ctx.ui.theme;
 
-		if (r.activeTools === 0 && !r.compacting && r.maskedAt === undefined && now >= r.nextRotate) {
+		if (r.activeTools === 0 && r.maskedAt === undefined && now >= r.nextRotate) {
 			setLine(r, randomPhrase(), now);
 		}
 		const revealing = now - r.lineStart < REVEAL_MS;
@@ -576,7 +560,6 @@ export default function (pi: ExtensionAPI) {
 			iceUntil: 0,
 			traceBoost: 0,
 			lastMessage: "",
-			compacting: false,
 			promptDepth: 0,
 			maskedAt: undefined,
 			pausedMs: 0,
@@ -721,43 +704,7 @@ export default function (pi: ExtensionAPI) {
 
 	pi.on("turn_end", async (_event, ctx) => updateHumanity(ctx));
 
-	// Ripperdoc: compaction pulls chrome (context) so you keep your humanity.
-	const endCompaction = () => {
-		if (!run) return;
-		run.compacting = false;
-		run.nextRotate = Math.min(run.nextRotate, Date.now() + TOOL_LINGER_MS);
-	};
-
-	pi.on("session_before_compact", async () => {
-		if (!run) return; // manual /compact runs while idle, with pi's own indicator
-		run.compacting = true;
-		setLine(run, RIPPERDOC_LINE);
-	});
-
-	pi.on("session_compact", async (event, ctx) => {
-		endCompaction();
-		updateHumanity(ctx);
-		if (!active(ctx)) return;
-		const chrome = `${kTokens(event.compactionEntry.tokensBefore)} tokens of chrome`;
-		if (event.reason === "overflow") flash(ctx, ALERT, `Relic malfunction: ripperdoc pulled ${chrome}`);
-		else flash(ctx, "success", `Ripperdoc pulled ${chrome}`);
-	});
-
-	pi.on("session_compact_failed", async (event, ctx) => {
-		endCompaction();
-		if (active(ctx) && !event.aborted) flash(ctx, ALERT, "Ripperdoc botched the job: compaction failed");
-	});
-
-	// Engram swap: a new model, or a different Sandevistan (thinking level).
-	pi.on("model_select", async (event, ctx) => {
-		if (!active(ctx) || event.source === "restore") return;
-		flash(ctx, PRIMARY, `Engram swap: ${sanitize(event.model.name || event.model.id)}`);
-	});
-
-	pi.on("thinking_level_select", async (event, ctx) => {
-		if (!active(ctx)) return;
-		flash(ctx, event.level === "off" ? FAINT : HIGHLIGHT, SANDEVISTAN[event.level] ?? `Sandevistan: ${sanitize(event.level)}`);
-	});
+	pi.on("session_compact", async (_event, ctx) => updateHumanity(ctx));
 
 	pi.on("agent_before_settle", async (event) => {
 		outcome = event.outcome;
