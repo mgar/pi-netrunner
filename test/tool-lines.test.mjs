@@ -92,3 +92,29 @@ test("goes back to rotating phrases after the tools finish", async () => {
 	assert.doesNotMatch(strip(pi.state.message), /quickhack/);
 	await pi.settle();
 });
+
+test("keeps a fast tool's line up for a full rotation", async () => {
+	const pi = start();
+	await pi.emit("session_start");
+	await pi.startRun();
+	await pi.emit("tool_execution_start", { toolName: "bg_run", args: { name: "Nap" } });
+	mock.timers.tick(50);
+	await pi.emit("tool_execution_end");
+	mock.timers.tick(2000);
+	assert.equal(strip(pi.state.message), "Deploying a background daemon: Nap");
+	mock.timers.tick(500);
+	assert.doesNotMatch(strip(pi.state.message), /daemon/);
+	await pi.settle();
+});
+
+test("keeps the codemode line while its script calls other tools", async () => {
+	const pi = start();
+	await pi.emit("session_start");
+	await pi.startRun();
+	await pi.emit("tool_execution_start", { toolCallId: "c1", toolName: "codemode", args: { code: "..." } });
+	await pi.emit("tool_execution_start", { toolCallId: "n1", toolName: "bash", args: { command: "ls" }, parentToolCallId: "c1" });
+	await pi.emit("tool_execution_end", { toolCallId: "n1", toolName: "bash", isError: false, parentToolCallId: "c1" });
+	mock.timers.tick(5000); // codemode still running
+	assert.equal(strip(pi.state.message), "Compiling a custom quickhack...");
+	await pi.settle();
+});

@@ -702,20 +702,21 @@ export default function (pi: ExtensionAPI) {
 		startRun(ctx);
 	});
 
+	// Calls a codemode script makes keep the script's own line up.
 	pi.on("tool_execution_start", async (event) => {
-		if (!run) return;
+		if (!run || event.parentToolCallId) return;
 		run.activeTools++;
 		setLine(run, toolLine(event.toolName, event.args));
 	});
 
 	pi.on("tool_execution_end", async (event) => {
-		if (!run) return;
+		if (!run || event.parentToolCallId) return;
 		if (event.isError) {
 			run.iceUntil = Date.now() + ICE_MS;
 			run.traceBoost += ICE_TRACE_BOOST_MS;
 		}
+		// A fast tool's line stays up for the rest of its rotation.
 		run.activeTools = Math.max(0, run.activeTools - 1);
-		if (run.activeTools === 0) run.nextRotate = Math.min(run.nextRotate, Date.now() + TOOL_LINGER_MS);
 	});
 
 	pi.on("turn_end", async (_event, ctx) => updateHumanity(ctx));
